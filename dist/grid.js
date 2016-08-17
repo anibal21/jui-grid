@@ -2618,7 +2618,7 @@ jui.defineUI("grid.xtable", [ "jquery", "util.base", "ui.modal", "grid.table", "
 		function createTableList(self) {
 			var exceptOpts = [
 			   "buffer", "bufferCount", "csvCount", "sortLoading", "sortCache", "sortIndex", "sortOrder",
-			   "event", "rows", "scrollWidth", "width", "rowHeight"
+			   "event", "rows", "scrollWidth", "width", "rowHeight", "delayedScroll"
 			];
 
 			var $root = $(self.root);
@@ -2806,6 +2806,7 @@ jui.defineUI("grid.xtable", [ "jquery", "util.base", "ui.modal", "grid.table", "
 			var $head = $(self.root).children(".head"),
 				$body = $(self.root).children(".body");
 
+			var timer = null;
 			self.addEvent($body, "scroll", function(e) {
 				// 컬럼 메뉴는 스크롤시 무조건 숨기기
 				self.hideColumnMenu();
@@ -2822,10 +2823,27 @@ jui.defineUI("grid.xtable", [ "jquery", "util.base", "ui.modal", "grid.table", "
 					}
 				} else if(opts.buffer == "vscroll") {
 					if(vscroll_info.prev_scroll_left == this.scrollLeft) {
-						renderVirtualScroll(self);
 
-						self.next();
-						self.emit("scroll", e);
+						(function (self, e) {
+
+							if (self.options.scrollDelay == 0) {
+								renderVirtualScroll(self);
+
+								self.next();
+								self.emit("scroll", e);
+							} else {
+								if (timer) { clearTimeout(timer); }
+								timer = setTimeout(function() {
+									renderVirtualScroll(self);
+
+									self.next();
+									self.emit("scroll", e);
+
+								}, self.options.scrollDelay);
+							}
+
+						})(self, e);
+
 					} else {
 						vscroll_info.prev_scroll_left = this.scrollLeft;
 					}
@@ -4210,6 +4228,8 @@ jui.defineUI("grid.xtable", [ "jquery", "util.base", "ui.modal", "grid.table", "
 			 * Determines whether to use the sort function when you click on a column.
 			 */
 			sortEvent: true,
+
+			scrollDelay : 10,
 
 			animate: false // @Deprecated
         }
